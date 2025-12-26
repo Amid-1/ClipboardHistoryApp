@@ -93,7 +93,7 @@ class ClipboardHistoryAppTest {
                 new ClipboardHistoryApp.BoundedFifoBuffer<>(1);
 
         assertTimeoutPreemptively(Duration.ofSeconds(3), () -> {
-            buffer.put(1); // буфер заполнен
+            buffer.put(1); 
 
             AtomicReference<Integer> takenRef = new AtomicReference<>();
             CountDownLatch consumerStarted = new CountDownLatch(1);
@@ -121,13 +121,13 @@ class ClipboardHistoryAppTest {
             assertEquals(2, buffer.take());
         });
     }
-    
+
     @Test
     void timeouts_putWithinReturnsFalseIfNoSpaceFreed() throws InterruptedException {
         ClipboardHistoryApp.BoundedFifoBuffer<Integer> buffer =
                 new ClipboardHistoryApp.BoundedFifoBuffer<>(1);
 
-        buffer.put(1); // заполнено
+        buffer.put(1);
 
         assertTimeoutPreemptively(Duration.ofSeconds(2), () -> {
             boolean ok = buffer.putWithin(2, 200, TimeUnit.MILLISECONDS);
