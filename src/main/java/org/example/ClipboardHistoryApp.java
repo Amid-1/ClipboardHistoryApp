@@ -19,7 +19,7 @@ public class ClipboardHistoryApp {
         private final Condition notFull = lock.newCondition();
 
         public BoundedFifoBuffer(int capacity) {
-            if (capacity <= 0) throw new IllegalArgumentException("Вместимость буфера должна быть больше нуля");
+            if (capacity <= 0) throw new IllegalArgumentException("Вместимость буфера должна быть положительным числом");
             this.capacity = capacity;
             this.elements = new Object[capacity];
         }
@@ -38,7 +38,7 @@ public class ClipboardHistoryApp {
         }
 
         public void put(T value) throws InterruptedException {
-            if (value == null) throw new IllegalArgumentException("Значение не должно быть null");
+            if (value == null) throw new IllegalArgumentException("value (значение) не должно быть null");
 
             lock.lockInterruptibly();
             try {
@@ -67,7 +67,7 @@ public class ClipboardHistoryApp {
         }
 
         public boolean tryPut(T value) {
-            if (value == null) throw new IllegalArgumentException("Значение не должно быть null");
+            if (value == null) throw new IllegalArgumentException("value (значение) не должно быть null");
 
             lock.lock();
             try {
@@ -93,7 +93,7 @@ public class ClipboardHistoryApp {
         }
 
         public boolean putWithin(T value, long timeout, TimeUnit unit) throws InterruptedException {
-            if (value == null) throw new IllegalArgumentException("Значение не должно быть null");
+            if (value == null) throw new IllegalArgumentException("value (значение) не должно быть null");
             if (unit == null) throw new IllegalArgumentException("unit (единица времени) не должен быть null");
 
             long nanos = unit.toNanos(timeout);

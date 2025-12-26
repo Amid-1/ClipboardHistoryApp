@@ -29,7 +29,7 @@ class ClipboardHistoryAppTest {
         assertEquals(1, buffer.tryTake());
         assertEquals(2, buffer.tryTake());
         assertEquals(3, buffer.tryTake());
-        assertNull(buffer.tryTake()); // pustо
+        assertNull(buffer.tryTake());
     }
 
     @Test
@@ -39,7 +39,7 @@ class ClipboardHistoryAppTest {
 
         assertTrue(buffer.tryPut(1));
         assertTrue(buffer.tryPut(2));
-        assertFalse(buffer.tryPut(3)); // perepolnenie
+        assertFalse(buffer.tryPut(3));
         assertEquals(2, buffer.size());
     }
 
