@@ -5,8 +5,15 @@ import org.junit.jupiter.api.Test;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+
 
 class ClipboardHistoryAppTest {
 
@@ -69,7 +76,8 @@ class ClipboardHistoryAppTest {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-            });
+            }, "producer");
+
             producer.start();
 
             Integer v = buffer.takeWithin(1, TimeUnit.SECONDS);
@@ -87,30 +95,33 @@ class ClipboardHistoryAppTest {
         assertTimeoutPreemptively(Duration.ofSeconds(3), () -> {
             buffer.put(1); // буфер заполнен
 
+            AtomicReference<Integer> takenRef = new AtomicReference<>();
             CountDownLatch consumerStarted = new CountDownLatch(1);
 
             Thread consumer = new Thread(() -> {
                 try {
                     consumerStarted.countDown();
                     Thread.sleep(200);
-                    Integer taken = buffer.take();
-                    assertEquals(1, taken);
+                    takenRef.set(buffer.take());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-            });
+            }, "consumer");
+
             consumer.start();
             assertTrue(consumerStarted.await(1, TimeUnit.SECONDS));
 
             boolean ok = buffer.putWithin(2, 1, TimeUnit.SECONDS);
             assertTrue(ok);
 
-            assertEquals(2, buffer.take());
-
             consumer.join();
+
+            assertNotNull(takenRef.get());
+            assertEquals(1, takenRef.get());
+            assertEquals(2, buffer.take());
         });
     }
-
+    
     @Test
     void timeouts_putWithinReturnsFalseIfNoSpaceFreed() throws InterruptedException {
         ClipboardHistoryApp.BoundedFifoBuffer<Integer> buffer =
