@@ -93,7 +93,7 @@ class ClipboardHistoryAppTest {
                 new ClipboardHistoryApp.BoundedFifoBuffer<>(1);
 
         assertTimeoutPreemptively(Duration.ofSeconds(3), () -> {
-            buffer.put(1); 
+            buffer.put(1);
 
             AtomicReference<Integer> takenRef = new AtomicReference<>();
             CountDownLatch consumerStarted = new CountDownLatch(1);
