@@ -10,7 +10,7 @@ public class ClipboardHistoryApp {
         private final BlockingQueue<T> queue;
 
         public BoundedFifoBuffer(int capacity) {
-            if (capacity <= 0) throw new IllegalArgumentException("вместимость должна быть положительным");
+            if (capacity <= 0) throw new IllegalArgumentException("вместимость должна быть больше нуля");
             this.queue = new ArrayBlockingQueue<>(capacity);
         }
 
