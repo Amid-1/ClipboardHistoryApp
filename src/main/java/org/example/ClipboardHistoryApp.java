@@ -1,46 +1,24 @@
 package org.example;
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-/**
- * ClipboardHistoryApp (single-file)
- *
- * Требование:
- * - помещать данные в свой буфер
- * - отдавать данные, соблюдая очередность (FIFO)
- *
- * Реализация:
- * - внутри ArrayBlockingQueue => FIFO + потокобезопасность
- *
- * Запуск:
- *   javac ClipboardHistoryApp.java
- *   java ClipboardHistoryApp
- */
 public class ClipboardHistoryApp {
 
-    /**
-     * FIFO-буфер фиксированной емкости.
-     * Базовая версия: блокирующие операции put/take.
-     */
     static final class BoundedFifoBuffer<T> {
         private final BlockingQueue<T> queue;
 
         public BoundedFifoBuffer(int capacity) {
-            if (capacity <= 0) throw new IllegalArgumentException("capacity must be > 0");
+            if (capacity <= 0) throw new IllegalArgumentException("вместимость должна быть положительным");
             this.queue = new ArrayBlockingQueue<>(capacity);
         }
 
-        /** Положить элемент. Блокируется, если буфер заполнен. */
         public void put(T value) throws InterruptedException {
-            if (value == null) throw new IllegalArgumentException("value must not be null");
+            if (value == null) throw new IllegalArgumentException("значение не должно быть null");
             queue.put(value);
         }
 
-        /** Взять элемент. Блокируется, если буфер пуст. */
         public T take() throws InterruptedException {
             return queue.take();
         }
@@ -49,24 +27,20 @@ public class ClipboardHistoryApp {
             return queue.size();
         }
 
-        /** Положить элемент без блокировки. Вернет false, если буфер заполнен. */
         public boolean tryPut(T value) {
-            if (value == null) throw new IllegalArgumentException("value must not be null");
+            if (value == null) throw new IllegalArgumentException("значение не должно быть null");
             return queue.offer(value);
         }
 
-        /** Взять элемент без блокировки. Вернет null, если буфер пуст. */
         public T tryTake() {
             return queue.poll();
         }
 
-        /** Положить элемент с таймаутом. Вернет false, если не удалось за время timeout. */
         public boolean putWithin(T value, long timeout, TimeUnit unit) throws InterruptedException {
-            if (value == null) throw new IllegalArgumentException("value must not be null");
+            if (value == null) throw new IllegalArgumentException("значение не должно быть null");
             return queue.offer(value, timeout, unit);
         }
 
-        /** Взять элемент с таймаутом. Вернет null, если не удалось за время timeout. */
         public T takeWithin(long timeout, TimeUnit unit) throws InterruptedException {
             return queue.poll(timeout, unit);
         }
