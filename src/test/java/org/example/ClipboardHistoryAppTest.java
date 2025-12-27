@@ -3,8 +3,15 @@ package org.example;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
-import java.util.concurrent.CountDownLatch;
+
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
@@ -135,5 +142,106 @@ class ClipboardHistoryAppTest {
         });
 
         assertEquals(1, buffer.take());
+    }
+
+    @Test
+    void wrapAround_capacity3_put123_take12_put45_take345() throws InterruptedException {
+        ClipboardHistoryApp.BoundedFifoBuffer<Integer> buffer =
+                new ClipboardHistoryApp.BoundedFifoBuffer<>(3);
+
+        buffer.put(1);
+        buffer.put(2);
+        buffer.put(3);
+
+        assertEquals(1, buffer.take());
+        assertEquals(2, buffer.take());
+
+        buffer.put(4);
+        buffer.put(5);
+
+        assertEquals(3, buffer.take());
+        assertEquals(4, buffer.take());
+        assertEquals(5, buffer.take());
+        assertNull(buffer.tryTake());
+    }
+
+    @Test
+    void stress_multiProducerMultiConsumer_noLossNoDuplicates() {
+        assertTimeoutPreemptively(Duration.ofSeconds(5), () -> {
+            int capacity = 32;
+            int producers = 4;
+            int consumers = 4;
+            int perProducer = 2000;
+            int total = producers * perProducer;
+
+            ClipboardHistoryApp.BoundedFifoBuffer<Integer> buffer =
+                    new ClipboardHistoryApp.BoundedFifoBuffer<>(capacity);
+
+            AtomicInteger seq = new AtomicInteger(0);
+            AtomicInteger consumedCount = new AtomicInteger(0);
+            AtomicBoolean duplicateFound = new AtomicBoolean(false);
+
+            Set<Integer> consumed = ConcurrentHashMap.newKeySet(total);
+
+            CountDownLatch start = new CountDownLatch(1);
+            CountDownLatch producersDone = new CountDownLatch(producers);
+
+            ExecutorService pool = Executors.newFixedThreadPool(producers + consumers);
+
+            for (int p = 0; p < producers; p++) {
+                pool.submit(() -> {
+                    try {
+                        start.await();
+                        for (int i = 0; i < perProducer; i++) {
+                            int v = seq.incrementAndGet();
+                            buffer.put(v);
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        producersDone.countDown();
+                    }
+                });
+            }
+
+            for (int c = 0; c < consumers; c++) {
+                pool.submit(() -> {
+                    try {
+                        start.await();
+                        while (true) {
+                            int already = consumedCount.get();
+                            if (already >= total) break;
+
+                            Integer v = buffer.takeWithin(200, TimeUnit.MILLISECONDS);
+                            if (v == null) {
+                                if (producersDone.getCount() == 0 && buffer.size() == 0) break;
+                                continue;
+                            }
+
+                            if (!consumed.add(v)) {
+                                duplicateFound.set(true);
+                            }
+                            consumedCount.incrementAndGet();
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                });
+            }
+
+            start.countDown();
+
+            assertTrue(producersDone.await(3, TimeUnit.SECONDS),
+                    "Потоки, добавляющие данные в буфер, " +
+                            "не завершили работу вовремя");
+
+            pool.shutdown();
+            assertTrue(pool.awaitTermination(3, TimeUnit.SECONDS), "Пул потоков не завершился вовремя");
+
+            assertFalse(duplicateFound.get(), "Обнаружены дубликаты");
+            assertEquals(total, consumed.size(),
+                    "Обнаружена потеря данных: количество полученных элементов " +
+                            "не равно количеству добавленных в буфер");
+        });
     }
 }

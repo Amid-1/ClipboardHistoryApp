@@ -6,7 +6,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class ClipboardHistoryApp {
 
-    static final class BoundedFifoBuffer<T> {
+    public static final class BoundedFifoBuffer<T> {
         private final Object[] elements;
         private final int capacity;
 
@@ -19,9 +19,13 @@ public class ClipboardHistoryApp {
         private final Condition notFull = lock.newCondition();
 
         public BoundedFifoBuffer(int capacity) {
-            if (capacity <= 0) throw new IllegalArgumentException("Вместимость буфера должна быть положительным числом");
+            if (capacity <= 0) throw new IllegalArgumentException("Capacity must be positive");
             this.capacity = capacity;
             this.elements = new Object[capacity];
+        }
+
+        public int capacity() {
+            return capacity;
         }
 
         public int size() {
@@ -33,10 +37,6 @@ public class ClipboardHistoryApp {
             }
         }
 
-        public int capacity() {
-            return capacity;
-        }
-
         public void put(T value) throws InterruptedException {
             if (value == null) throw new NullPointerException("value");
 
@@ -46,7 +46,7 @@ public class ClipboardHistoryApp {
                     notFull.await();
                 }
                 enqueue(value);
-                notEmpty.signalAll();
+                notEmpty.signal();
             } finally {
                 lock.unlock();
             }
@@ -59,7 +59,7 @@ public class ClipboardHistoryApp {
                     notEmpty.await();
                 }
                 T value = dequeue();
-                notFull.signalAll();
+                notFull.signal();
                 return value;
             } finally {
                 lock.unlock();
@@ -69,11 +69,11 @@ public class ClipboardHistoryApp {
         public boolean tryPut(T value) {
             if (value == null) throw new NullPointerException("value");
 
-            lock.lock();
+            if (!lock.tryLock()) return false;
             try {
                 if (size == capacity) return false;
                 enqueue(value);
-                notEmpty.signalAll();
+                notEmpty.signal();
                 return true;
             } finally {
                 lock.unlock();
@@ -81,11 +81,11 @@ public class ClipboardHistoryApp {
         }
 
         public T tryTake() {
-            lock.lock();
+            if (!lock.tryLock()) return null;
             try {
                 if (size == 0) return null;
                 T value = dequeue();
-                notFull.signalAll();
+                notFull.signal();
                 return value;
             } finally {
                 lock.unlock();
@@ -104,7 +104,7 @@ public class ClipboardHistoryApp {
                     nanos = notFull.awaitNanos(nanos);
                 }
                 enqueue(value);
-                notEmpty.signalAll();
+                notEmpty.signal();
                 return true;
             } finally {
                 lock.unlock();
@@ -122,7 +122,7 @@ public class ClipboardHistoryApp {
                     nanos = notEmpty.awaitNanos(nanos);
                 }
                 T value = dequeue();
-                notFull.signalAll();
+                notFull.signal();
                 return value;
             } finally {
                 lock.unlock();
@@ -143,39 +143,5 @@ public class ClipboardHistoryApp {
             size--;
             return (T) v;
         }
-    }
-
-    public static void main(String[] args) throws InterruptedException {
-        BoundedFifoBuffer<Integer> buffer = new BoundedFifoBuffer<>(5);
-
-        Thread producer = new Thread(() -> {
-            try {
-                for (int i = 1; i <= 10; i++) {
-                    buffer.put(i);
-                    System.out.println("PUT:  " + i + " (size=" + buffer.size() + ")");
-                    Thread.sleep(300);
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }, "producer");
-
-        Thread consumer = new Thread(() -> {
-            try {
-                for (int i = 1; i <= 10; i++) {
-                    int value = buffer.take();
-                    System.out.println("TAKE: " + value + " (size=" + buffer.size() + ")");
-                    Thread.sleep(600);
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }, "consumer");
-
-        producer.start();
-        consumer.start();
-
-        producer.join();
-        consumer.join();
     }
 }
