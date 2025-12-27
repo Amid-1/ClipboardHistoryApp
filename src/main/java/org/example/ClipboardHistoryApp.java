@@ -38,7 +38,7 @@ public class ClipboardHistoryApp {
         }
 
         public void put(T value) throws InterruptedException {
-            if (value == null) throw new IllegalArgumentException("value (значение) не должно быть null");
+            if (value == null) throw new NullPointerException("value");
 
             lock.lockInterruptibly();
             try {
@@ -67,7 +67,7 @@ public class ClipboardHistoryApp {
         }
 
         public boolean tryPut(T value) {
-            if (value == null) throw new IllegalArgumentException("value (значение) не должно быть null");
+            if (value == null) throw new NullPointerException("value");
 
             lock.lock();
             try {
@@ -93,8 +93,8 @@ public class ClipboardHistoryApp {
         }
 
         public boolean putWithin(T value, long timeout, TimeUnit unit) throws InterruptedException {
-            if (value == null) throw new IllegalArgumentException("value (значение) не должно быть null");
-            if (unit == null) throw new IllegalArgumentException("unit (единица времени) не должен быть null");
+            if (value == null) throw new NullPointerException("value");
+            if (unit == null) throw new NullPointerException("unit");
 
             long nanos = unit.toNanos(timeout);
             lock.lockInterruptibly();
@@ -112,7 +112,7 @@ public class ClipboardHistoryApp {
         }
 
         public T takeWithin(long timeout, TimeUnit unit) throws InterruptedException {
-            if (unit == null) throw new IllegalArgumentException("unit (единица времени) не должен быть null");
+            if (unit == null) throw new NullPointerException("unit");
 
             long nanos = unit.toNanos(timeout);
             lock.lockInterruptibly();
